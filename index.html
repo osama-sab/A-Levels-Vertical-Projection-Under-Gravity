@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vertical projection under gravity</title>
+<meta name="description" content="Type in your own values and watch a ball projected vertically upwards, with displacement and velocity graphs. Edexcel A level Mechanics.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAFAF8; --panel:#FFFFFF; --panel2:#F3F4F1; --line:#D8DEE4; --grid:#E4E8EC;
+  --text:#1C2128; --muted:#57606A; --primary:#0969DA; --accent:#BC4C00; --danger:#CF222E; --on-primary:#FFFFFF;
+  color-scheme:light; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1117; --panel:#161B22; --panel2:#0D1117; --line:#30363D; --grid:#21262D;
+    --text:#E6EDF3; --muted:#8B949E; --primary:#58A6FF; --accent:#FFA657; --danger:#F85149; --on-primary:#0D1117; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1117; --panel:#161B22; --panel2:#0D1117; --line:#30363D; --grid:#21262D;
+  --text:#E6EDF3; --muted:#8B949E; --primary:#58A6FF; --accent:#FFA657; --danger:#F85149; --on-primary:#0D1117; color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+math{font-family:"Latin Modern Math","STIX Two Math","Cambria Math",math;font-size:1.08em}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 48px}
+h1{font-size:26px;font-weight:600;letter-spacing:-0.01em;margin:0 0 2px}
+.sub{margin:0 0 18px;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.inputs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;margin-bottom:14px}
+.box{padding:16px 18px}
+.box+.box{border-left:1px solid var(--line)}
+.box h2{font-size:15px;font-weight:600;margin:0 0 10px}
+.row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:4px}
+.inwrap{display:flex;align-items:center;height:42px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:0 12px;gap:8px}
+.inwrap:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 25%,transparent)}
+.inwrap.bad{border-color:var(--danger)}
+.inwrap input{width:96px;border:0;background:transparent;color:var(--text);font:inherit;font-size:18px;font-weight:500;font-variant-numeric:tabular-nums;outline:none}
+.inwrap .lab,.inwrap .unit{color:var(--muted)}
+.err{color:var(--danger);font-size:13px;min-height:20px}
+.btn{height:42px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;font-size:14px;font-weight:500;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--primary);border-color:transparent;color:var(--on-primary)}
+.stage{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px}
+.scene{height:470px;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+.graphs{display:grid;grid-template-rows:1fr 1fr;gap:14px}
+.graph{display:flex;flex-direction:column;height:228px;overflow:hidden}
+.ghead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px 0;font-size:13px;color:var(--muted)}
+.ghead b{color:var(--text);font-weight:500}
+.graph .cv{flex:1;min-height:0}
+.results{margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.res{padding:12px 16px}
+.res .k{color:var(--muted);font-size:13px}
+.res .v{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.res .u{color:var(--muted);margin-left:6px}
+.res.now .v{color:var(--primary)}
+.res.vel .v{color:var(--accent)}
+footer{margin-top:18px;color:var(--muted);font-size:13px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100%);background:var(--panel);border-left:1px solid var(--line);padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto;z-index:20;box-shadow:-12px 0 32px rgba(0,0,0,.22)}
+.drawer[hidden]{display:none}
+.dhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.dhead h2{font-size:18px;font-weight:600;margin:0}
+.dnote{color:var(--muted);font-size:14px;margin:0 0 14px}
+.cgrid{display:grid;gap:10px;margin-bottom:4px}
+.cgrid .inwrap input{width:auto;flex:1;min-width:0}
+.cgrid .inwrap .lab{min-width:30px}
+.out{margin-top:14px;border-top:1px solid var(--line);padding-top:6px}
+.out h3{font-size:14px;font-weight:600;margin:14px 0 2px}
+.out .use{color:var(--muted);font-size:13px;margin-top:10px}
+.out .step{font-size:18px;overflow-x:auto;padding:2px 0}
+.out .note{color:var(--muted);font-size:14px;margin:10px 0 0}
+#cSend{margin-top:16px;width:100%}
+@media (min-width:1240px){body.calc-open .wrap{padding-right:430px;max-width:1560px}}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+@media (max-width:860px){
+  .stage,.inputs{grid-template-columns:minmax(0,1fr)}
+  .box+.box{border-left:0;border-top:1px solid var(--line)}
+  .scene{height:380px}
+  .results{grid-template-columns:minmax(0,1fr)}
+  .btn{min-height:44px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Vertical projection under gravity</h1>
+      <p class="sub">Type in a starting speed, launch the ball, then check your own calculations.</p>
+    </div>
+    <button class="btn" id="calcOpen" aria-controls="calc" aria-expanded="false">Open SUVAT calculator</button>
+  </div>
+
+  <section class="panel inputs">
+    <div class="box">
+      <h2>1. Launch the ball</h2>
+      <div class="row">
+        <div class="field">
+          <div class="inwrap" id="uWrap"><span class="lab tex" data-tex="u ="></span><input id="uIn" type="text" inputmode="decimal" value="14.7" aria-label="Initial speed in metres per second" aria-describedby="uErr"><span class="unit tex" data-tex="\text{m s}^{-1}"></span></div>
+          <div class="err" id="uErr"></div>
+        </div>
+        <button class="btn primary" id="launch">Launch</button>
+        <button class="btn" id="reset">Reset</button>
+      </div>
+    </div>
+    <div class="box">
+      <h2>2. Find the ball at a time</h2>
+      <div class="row">
+        <div class="field">
+          <div class="inwrap" id="tWrap"><span class="lab tex" data-tex="t ="></span><input id="tIn" type="text" inputmode="decimal" placeholder="1.2" aria-label="Time in seconds" aria-describedby="tErr"><span class="unit tex" data-tex="\text{s}"></span></div>
+          <div class="err" id="tErr"></div>
+        </div>
+        <button class="btn" id="goT">Show</button>
+      </div>
+    </div>
+  </section>
+
+  <main class="stage">
+    <section class="panel scene" aria-label="Animation of the ball"><canvas id="scene"></canvas></section>
+    <section class="graphs">
+      <div class="panel graph">
+        <div class="ghead"><b>Displacement against time</b><span class="tex" data-tex="s\ (\text{m})\ \text{against}\ t\ (\text{s})"></span></div>
+        <div class="cv"><canvas id="gs" aria-label="Displacement time graph"></canvas></div>
+      </div>
+      <div class="panel graph">
+        <div class="ghead"><b>Velocity against time</b><span class="tex" data-tex="v\ (\text{m s}^{-1})\ \text{against}\ t\ (\text{s})"></span></div>
+        <div class="cv"><canvas id="gv" aria-label="Velocity time graph"></canvas></div>
+      </div>
+    </section>
+  </main>
+
+  <section class="results">
+    <div class="panel res now"><div class="k">Time <span class="tex" data-tex="t"></span></div><span class="v" id="rt">0.00</span><span class="u tex" data-tex="\text{s}"></span></div>
+    <div class="panel res now"><div class="k">Displacement <span class="tex" data-tex="s"></span></div><span class="v" id="rs">0.00</span><span class="u tex" data-tex="\text{m}"></span></div>
+    <div class="panel res vel"><div class="k">Velocity <span class="tex" data-tex="v"></span></div><span class="v" id="rv">14.70</span><span class="u tex" data-tex="\text{m s}^{-1}"></span></div>
+  </section>
+
+  <footer>Hover over or tap a graph to read values. Upwards is positive, <span class="tex" data-tex="a = -9.8\ \text{m s}^{-2}"></span>, the ball is a particle and air resistance is ignored.</footer>
+</div>
+
+<aside class="drawer" id="calc" aria-label="SUVAT calculator" hidden>
+  <div class="dhead"><h2>SUVAT calculator</h2><button class="btn" id="calcClose">Close</button></div>
+  <p class="dnote">Fill in exactly three values and leave the other two blank. Upwards is positive, so a ball moving under gravity has <span class="tex" data-tex="a = -9.8"></span>.</p>
+  <div class="cgrid">
+    <div class="inwrap" id="cws"><span class="lab tex" data-tex="s ="></span><input id="cs" type="text" inputmode="decimal" aria-label="Displacement s in metres"><span class="unit tex" data-tex="\text{m}"></span></div>
+    <div class="inwrap" id="cwu"><span class="lab tex" data-tex="u ="></span><input id="cu" type="text" inputmode="decimal" aria-label="Initial velocity u in metres per second"><span class="unit tex" data-tex="\text{m s}^{-1}"></span></div>
+    <div class="inwrap" id="cwv"><span class="lab tex" data-tex="v ="></span><input id="cv" type="text" inputmode="decimal" aria-label="Final velocity v in metres per second"><span class="unit tex" data-tex="\text{m s}^{-1}"></span></div>
+    <div class="inwrap" id="cwa"><span class="lab tex" data-tex="a ="></span><input id="ca" type="text" inputmode="decimal" value="-9.8" aria-label="Acceleration a in metres per second squared"><span class="unit tex" data-tex="\text{m s}^{-2}"></span></div>
+    <div class="inwrap" id="cwt"><span class="lab tex" data-tex="t ="></span><input id="ct" type="text" inputmode="decimal" aria-label="Time t in seconds"><span class="unit tex" data-tex="\text{s}"></span></div>
+  </div>
+  <div class="err" id="cErr" role="alert"></div>
+  <div class="row"><button class="btn primary" id="cSolve">Solve</button><button class="btn" id="cClear">Clear</button></div>
+  <div class="out" id="cOut" hidden></div>
+  <button class="btn" id="cSend" hidden></button>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script>
+(function(){
+const g = 9.8, UMAX = 50, root = document.documentElement, $ = id => document.getElementById(id);
+let u = 14.7, t = 0, playing = false, last = null, holdUntil = 0, topped = false;
+
+function tex(el, s){
+  if (window.katex){ try { katex.render(s, el, {output:'mathml', throwOnError:false}); return; } catch(e){} }
+  el.textContent = s;
+}
+document.querySelectorAll('.tex').forEach(el => tex(el, el.dataset.tex));
+
+const T1 = () => u / g, TT = () => 2 * u / g, HM = () => u * u / (2 * g);
+const sAt = x => u * x - 0.5 * g * x * x, vAt = x => u - g * x;
+const fmt = (x, d = 2) => (Math.abs(x) < 0.5 * Math.pow(10, -d) ? 0 : x).toFixed(d);
+const trim = (x, d = 3) => String(Number((Math.abs(x) < 1e-9 ? 0 : x).toFixed(d)));
+function niceStep(range, n){ const raw = range / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
+function col(){ const cs = getComputedStyle(root), v = n => cs.getPropertyValue(n).trim(); return {text:v('--text'), muted:v('--muted'), grid:v('--grid'), primary:v('--primary'), accent:v('--accent'), panel:v('--panel'), line:v('--line')}; }
+const FONT = '"IBM Plex Sans", system-ui, sans-serif';
+
+function setup(id){
+  const c = $(id), ctx = c.getContext('2d'), o = {ctx, w:0, h:0};
+  new ResizeObserver(() => { const r = c.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2); c.width = r.width * d; c.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0); o.w = r.width; o.h = r.height; draw(); }).observe(c);
+  return o;
+}
+const S = setup('scene'), GS = setup('gs'), GV = setup('gv');
+function line(ctx, a, b, c, d){ ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); }
+
+function drawScene(C){
+  const {ctx, w, h} = S; if (!w) return;
+  ctx.clearRect(0, 0, w, h);
+  const H = HM(), top = 40, bottom = h - 46, left = 52, right = w - 18;
+  const step = niceStep(H * 1.15, 6), ymax = Math.ceil(H * 1.15 / step) * step;
+  const Y = s => bottom - (s / ymax) * (bottom - top);
+  ctx.font = '12px ' + FONT; ctx.lineWidth = 1;
+  for (let k = 0; k * step <= ymax + 1e-9; k++){
+    const y = Y(k * step); ctx.strokeStyle = C.grid; line(ctx, left, y, right, y);
+    ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText(trim(k * step, 2), left - 8, y + 4);
+  }
+  ctx.fillText('s / m', left - 8, top - 18);
+  ctx.strokeStyle = C.muted; ctx.lineWidth = 1.5; line(ctx, left, Y(0), right, Y(0));
+  ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText('start, s = 0', right - 2, Y(0) + 20);
+  if (t > 0){
+    ctx.setLineDash([5, 5]); ctx.strokeStyle = C.primary; ctx.lineWidth = 1.25; line(ctx, left, Y(H), right, Y(H)); ctx.setLineDash([]);
+    ctx.fillStyle = C.primary; ctx.textAlign = 'left'; ctx.font = '500 12px ' + FONT;
+    ctx.fillText('highest point', left + 8, Y(H) - 8);
+  }
+  const cx = left + (right - left) * 0.5, by = Y(sAt(t));
+  ctx.globalAlpha = 0.16; ctx.fillStyle = C.primary; ctx.beginPath(); ctx.arc(cx, by, 22, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+  const gr = ctx.createRadialGradient(cx - 4, by - 4, 1, cx, by, 12);
+  gr.addColorStop(0, '#FFFFFF'); gr.addColorStop(0.35, C.primary); gr.addColorStop(1, C.primary);
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, by, 11, 0, Math.PI * 2); ctx.fill();
+  if (Math.abs(t - T1()) < 1e-9){ ctx.fillStyle = C.accent; ctx.font = '500 13px ' + FONT; ctx.textAlign = 'left'; ctx.fillText('Momentarily at rest, v = 0', cx + 24, by + 5); }
+}
+
+const PAD = {l:46, r:16, t:10, b:26};
+let hover = null;
+function keysFor(which){
+  const T = TT(), a = T1();
+  return which === 's'
+    ? [{t:0, name:'Launch'}, {t:a, name:'Maximum height', tag:'Max height', pos:'above'}, {t:T, name:'Back at the start', tag:'Back at start', pos:'end'}]
+    : [{t:0, name:'Launch speed'}, {t:a, name:'Momentarily at rest', tag:'v = 0', pos:'below'}, {t:T, name:'Back at the start', tag:'v = -u', pos:'end'}];
+}
+function snap(G, px){
+  const T = TT(), W = G.w - PAD.l - PAD.r;
+  const raw = Math.max(0, Math.min(T, (px - PAD.l) / W * T));
+  const keys = keysFor('s');
+  for (let i = 0; i < keys.length; i++) if (Math.abs(keys[i].t - raw) / T * W < 10) return {t:keys[i].t, ki:i};
+  const step = niceStep(T, 12);
+  return {t:Math.min(T, Math.round(raw / step) * step), ki:-1};
+}
+function drawGraph(G, C, f, ymin, ymax, color, which, sym, unit){
+  const {ctx, w, h} = G; if (!w) return;
+  ctx.clearRect(0, 0, w, h);
+  const T = TT(), P = PAD;
+  const X = x => P.l + (x / T) * (w - P.l - P.r), Y = v => P.t + (ymax - v) / (ymax - ymin) * (h - P.t - P.b);
+  ctx.font = '11.5px ' + FONT; ctx.lineWidth = 1;
+  const xs = niceStep(T, 5);
+  for (let x = 0; x <= T + 1e-9; x += xs){ ctx.strokeStyle = C.grid; line(ctx, X(x), P.t, X(x), h - P.b); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.fillText(trim(x, 2), X(x), h - 8); }
+  const ys = niceStep(ymax - ymin, 4);
+  for (let y = Math.ceil(ymin / ys - 1e-9) * ys; y <= ymax + 1e-9; y += ys){ ctx.strokeStyle = C.grid; line(ctx, P.l, Y(y), w - P.r, Y(y)); ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText(trim(y, 2), P.l - 8, Y(y) + 4); }
+  ctx.strokeStyle = C.muted; ctx.lineWidth = 1.5; line(ctx, P.l, Y(0), w - P.r, Y(0)); line(ctx, P.l, P.t, P.l, h - P.b);
+  const path = upto => { ctx.beginPath(); const n = 160; for (let i = 0; i <= n; i++){ const x = Math.min(upto, T * i / n); i ? ctx.lineTo(X(x), Y(f(x))) : ctx.moveTo(X(x), Y(f(x))); if (x >= upto) break; } ctx.stroke(); };
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.globalAlpha = 0.22; path(T); ctx.globalAlpha = 1; ctx.lineWidth = 2.5; path(t);
+  ctx.globalAlpha = 0.6; ctx.strokeStyle = C.muted; ctx.lineWidth = 1; line(ctx, X(t), P.t, X(t), h - P.b); ctx.globalAlpha = 1;
+  ctx.fillStyle = color; ctx.strokeStyle = C.panel; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(t), Y(f(t)), 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const keys = keysFor(which);
+  keys.forEach(k => {
+    if (k.t > t + 1e-9) return;
+    const x = X(k.t), y = Y(f(k.t));
+    ctx.fillStyle = C.panel; ctx.strokeStyle = color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (!k.tag) return;
+    ctx.fillStyle = C.text; ctx.font = '500 12px ' + FONT;
+    if (k.pos === 'above'){ ctx.textAlign = 'center'; ctx.fillText(k.tag, x, y - 11); }
+    else if (k.pos === 'below'){ ctx.textAlign = 'left'; ctx.fillText(k.tag, x + 9, y + 17); }
+    else { ctx.textAlign = 'right'; ctx.fillText(k.tag, x - 9, y - 9); }
+  });
+  if (hover && hover.t <= T + 1e-9){
+    const x = X(hover.t), val = f(hover.t), y = Y(val);
+    ctx.setLineDash([3, 3]); ctx.globalAlpha = 0.55; ctx.strokeStyle = C.text; ctx.lineWidth = 1; line(ctx, x, P.t, x, h - P.b); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.fillStyle = color; ctx.strokeStyle = C.panel; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    const lines = [];
+    if (hover.ki >= 0) lines.push([keys[hover.ki].name, true]);
+    lines.push(['t = ' + fmt(hover.t) + ' s', false]);
+    lines.push([sym + ' = ' + fmt(val) + ' ' + unit, false]);
+    let bw = 0;
+    lines.forEach(([s, b]) => { ctx.font = (b ? '600 ' : '400 ') + '12.5px ' + FONT; bw = Math.max(bw, ctx.measureText(s).width); });
+    bw += 20; const bh = lines.length * 18 + 12;
+    let bx = x + 14; if (bx + bw > w - 4) bx = x - 14 - bw;
+    const byy = Math.max(4, Math.min(h - bh - 4, y - bh / 2));
+    ctx.fillStyle = C.panel; ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.rect(bx + 0.5, byy + 0.5, bw, bh); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color; ctx.fillRect(bx + 0.5, byy + 0.5, 3, bh);
+    lines.forEach(([s, b], i) => { ctx.font = (b ? '600 ' : '400 ') + '12.5px ' + FONT; ctx.fillStyle = b ? C.text : (i === lines.length - 1 ? C.text : C.muted); ctx.textAlign = 'left'; ctx.fillText(s, bx + 12, byy + 20 + i * 18); });
+  }
+}
+
+function draw(){
+  const C = col();
+  drawScene(C);
+  const ss = niceStep(HM() * 1.15, 4);
+  drawGraph(GS, C, sAt, 0, Math.ceil(HM() * 1.15 / ss) * ss, C.primary, 's', 's', 'm');
+  const vs = niceStep(2.3 * u, 4), vm = Math.ceil(1.1 * u / vs) * vs;
+  drawGraph(GV, C, vAt, -vm, vm, C.accent, 'v', 'v', 'm/s');
+  $('rt').textContent = fmt(t); $('rs').textContent = fmt(sAt(t)); $('rv').textContent = fmt(vAt(t));
+}
+
+function readNum(input, wrap, errEl, check){
+  const raw = input.value.trim().replace(',', '.');
+  const n = Number(raw);
+  let msg = '';
+  if (raw === '') msg = 'Enter a value first.';
+  else if (!isFinite(n)) msg = 'Use digits only, for example 12.5.';
+  else msg = check(n);
+  errEl.textContent = msg; wrap.classList.toggle('bad', !!msg);
+  return msg ? null : n;
+}
+function clearErr(input, wrap, errEl){ input.addEventListener('input', () => { errEl.textContent = ''; wrap.classList.remove('bad'); }); }
+clearErr($('uIn'), $('uWrap'), $('uErr')); clearErr($('tIn'), $('tWrap'), $('tErr'));
+
+function readU(){
+  return readNum($('uIn'), $('uWrap'), $('uErr'), n => n <= 0 ? 'The speed must be greater than 0.' : n > UMAX ? 'Use a speed up to ' + UMAX + ' m/s.' : '');
+}
+function applyU(n){ if (Math.abs(n - u) > 1e-12){ u = n; t = 0; hover = null; } }
+
+function loop(ts){
+  if (!playing) return;
+  if (last === null) last = ts;
+  const dt = Math.min((ts - last) / 1000, 0.05); last = ts;
+  if (ts < holdUntil){ requestAnimationFrame(loop); return; }
+  const next = t + dt;
+  if (!topped && t < T1() && next >= T1()){ t = T1(); topped = true; holdUntil = ts + 1500; }
+  else t = next;
+  if (t >= TT()){ t = TT(); playing = false; $('launch').textContent = 'Launch'; }
+  draw();
+  if (playing) requestAnimationFrame(loop);
+}
+$('launch').addEventListener('click', () => {
+  if (playing){ playing = false; $('launch').textContent = 'Resume'; return; }
+  const n = readU(); if (n === null) return;
+  applyU(n);
+  if (t >= TT() - 1e-9) t = 0;
+  if (t < T1()) topped = false;
+  playing = true; last = null; holdUntil = 0; $('launch').textContent = 'Pause'; requestAnimationFrame(loop);
+});
+$('reset').addEventListener('click', () => { playing = false; t = 0; $('launch').textContent = 'Launch'; draw(); });
+$('goT').addEventListener('click', () => {
+  const n = readU(); if (n === null) return;
+  applyU(n);
+  const tv = readNum($('tIn'), $('tWrap'), $('tErr'), x => x < 0 ? 'Time cannot be negative.' : x > TT() + 1e-9 ? 'The ball lands back at the start after ' + fmt(TT()) + ' s. Enter a smaller time.' : '');
+  if (tv === null) return;
+  playing = false; $('launch').textContent = tv > 0 && tv < TT() ? 'Resume' : 'Launch'; t = tv; draw();
+});
+$('uIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('launch').click(); });
+$('tIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('goT').click(); });
+[['gs', GS], ['gv', GV]].forEach(([id, G]) => {
+  const c = $(id); c.style.touchAction = 'pan-y'; c.style.cursor = 'crosshair';
+  const mv = e => { const r = c.getBoundingClientRect(); hover = snap(G, e.clientX - r.left); draw(); };
+  c.addEventListener('pointermove', mv);
+  c.addEventListener('pointerdown', mv);
+  c.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse'){ hover = null; draw(); } });
+});
+document.addEventListener('pointerdown', e => { if (hover && e.target.id !== 'gs' && e.target.id !== 'gv'){ hover = null; draw(); } });
+
+const calc = $('calc'), openB = $('calcOpen');
+function setCalc(open){
+  calc.hidden = !open; document.body.classList.toggle('calc-open', open);
+  openB.setAttribute('aria-expanded', String(open));
+  openB.textContent = open ? 'Close SUVAT calculator' : 'Open SUVAT calculator';
+  if (open) $('cs').focus(); else openB.focus();
+}
+openB.addEventListener('click', () => setCalc(calc.hidden));
+$('calcClose').addEventListener('click', () => setCalc(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !calc.hidden) setCalc(false); });
+
+const VARS = ['s', 'u', 'v', 'a', 't'];
+const UNIT = {s:'\\text{m}', u:'\\text{m s}^{-1}', v:'\\text{m s}^{-1}', a:'\\text{m s}^{-2}', t:'\\text{s}'};
+const N = x => trim(x, 3);
+const BAD = 'No valid solution with these values. Check for dividing by zero and check the signs.';
+function run(k, steps){
+  const r = Object.assign({}, k), out = [];
+  steps.forEach(([gen, rea, x, fn]) => { const val = fn(r); if (!isFinite(val)) throw BAD; r[x] = val; out.push([gen, rea, x, val]); });
+  return {r, out};
+}
+const one = (k, steps) => [run(k, steps)];
+const SOLVE_T = ['v = u + at', 't = \\frac{v - u}{a}', 't', r => (r.v - r.u) / r.a];
+function branch(k, disc, x, rea, note){
+  if (disc < -1e-9) throw 'No real solution: with these values the ball never reaches that displacement.';
+  const R = Math.sqrt(Math.max(0, disc)), sols = [];
+  (R < 1e-9 ? [1] : [1, -1]).forEach(sg => {
+    try { const s = run(k, [['v^2 = u^2 + 2as', rea, x, () => sg * R], SOLVE_T]); if (s.r.t >= -1e-9) sols.push(s); } catch(e){}
+  });
+  if (sols.length > 1) sols.note = note;
+  return sols;
+}
+const nonNeg = sols => sols.filter(s => s.r.t >= -1e-9);
+const SOLVE = {
+  atu: k => one(k, [['v = u + at', 'v = u + at', 'v', r => r.u + r.a * r.t], ['s = ut + \\tfrac{1}{2}at^2', 's = ut + \\tfrac{1}{2}at^2', 's', r => r.u * r.t + 0.5 * r.a * r.t * r.t]]),
+  auv: k => nonNeg(one(k, [SOLVE_T, ['v^2 = u^2 + 2as', 's = \\frac{v^2 - u^2}{2a}', 's', r => (r.v * r.v - r.u * r.u) / (2 * r.a)]])),
+  tuv: k => one(k, [['v = u + at', 'a = \\frac{v - u}{t}', 'a', r => (r.v - r.u) / r.t], ['s = \\tfrac{1}{2}(u + v)t', 's = \\tfrac{1}{2}(u + v)t', 's', r => 0.5 * (r.u + r.v) * r.t]]),
+  stu: k => one(k, [['s = ut + \\tfrac{1}{2}at^2', 'a = \\frac{2(s - ut)}{t^2}', 'a', r => 2 * (r.s - r.u * r.t) / (r.t * r.t)], ['s = \\tfrac{1}{2}(u + v)t', 'v = \\frac{2s}{t} - u', 'v', r => 2 * r.s / r.t - r.u]]),
+  stv: k => one(k, [['s = \\tfrac{1}{2}(u + v)t', 'u = \\frac{2s}{t} - v', 'u', r => 2 * r.s / r.t - r.v], ['s = vt - \\tfrac{1}{2}at^2', 'a = \\frac{2(vt - s)}{t^2}', 'a', r => 2 * (r.v * r.t - r.s) / (r.t * r.t)]]),
+  ast: k => one(k, [['s = ut + \\tfrac{1}{2}at^2', 'u = \\frac{s - \\frac{1}{2}at^2}{t}', 'u', r => (r.s - 0.5 * r.a * r.t * r.t) / r.t], ['v = u + at', 'v = u + at', 'v', r => r.u + r.a * r.t]]),
+  atv: k => one(k, [['v = u + at', 'u = v - at', 'u', r => r.v - r.a * r.t], ['s = vt - \\tfrac{1}{2}at^2', 's = vt - \\tfrac{1}{2}at^2', 's', r => r.v * r.t - 0.5 * r.a * r.t * r.t]]),
+  suv: k => nonNeg(one(k, [['s = \\tfrac{1}{2}(u + v)t', 't = \\frac{2s}{u + v}', 't', r => 2 * r.s / (r.u + r.v)], ['v^2 = u^2 + 2as', 'a = \\frac{v^2 - u^2}{2s}', 'a', r => (r.v * r.v - r.u * r.u) / (2 * r.s)]])),
+  asu: k => branch(k, k.u * k.u + 2 * k.a * k.s, 'v', 'v = \\pm\\sqrt{u^2 + 2as}', 'There are two answers because the ball passes this point twice: once on the way up and once on the way down.'),
+  asv: k => branch(k, k.v * k.v - 2 * k.a * k.s, 'u', 'u = \\pm\\sqrt{v^2 - 2as}', 'There are two possible answers. Choose the one that fits the question.')
+};
+function cErr(msg){ $('cErr').textContent = msg; }
+function solveClick(){
+  const k = {}; let bad = false, cnt = 0;
+  $('cOut').hidden = true; $('cSend').hidden = true; cErr('');
+  VARS.forEach(x => {
+    const raw = $('c' + x).value.trim().replace(',', '.'); if (raw === '') return;
+    const n = Number(raw); if (!isFinite(n)){ $('cw' + x).classList.add('bad'); bad = true; return; }
+    k[x] = n; cnt++;
+  });
+  if (bad) return cErr('Use digits only, for example -9.8.');
+  if (cnt !== 3) return cErr('Fill in exactly three values and leave two blank. You have filled in ' + cnt + '.');
+  if ('t' in k && k.t < 0){ $('cwt').classList.add('bad'); return cErr('Time cannot be negative.'); }
+  let sols;
+  try { sols = SOLVE[Object.keys(k).sort().join('')](k); } catch(e){ return cErr(typeof e === 'string' ? e : BAD); }
+  if (!sols.length) return cErr('No valid solution with a time of zero or more. Check the signs of your values.');
+  const out = $('cOut'); out.innerHTML = '';
+  sols.forEach((s, i) => {
+    if (sols.length > 1){ const h = document.createElement('h3'); h.textContent = 'Answer ' + (i + 1); out.appendChild(h); }
+    s.out.forEach(([gen, rea, x, val]) => {
+      if (gen !== rea){ const d = document.createElement('div'); d.className = 'use'; d.textContent = 'Rearranging '; const sp = document.createElement('span'); tex(sp, gen); d.appendChild(sp); out.appendChild(d); }
+      else { const d = document.createElement('div'); d.className = 'use'; d.textContent = 'Using'; out.appendChild(d); }
+      const st = document.createElement('div'); st.className = 'step'; tex(st, rea + ' = ' + N(val) + '\\ ' + UNIT[x]); out.appendChild(st);
+    });
+  });
+  if (sols.note){ const p = document.createElement('p'); p.className = 'note'; p.textContent = sols.note; out.appendChild(p); }
+  out.hidden = false;
+  const us = [...new Set(sols.map(s => N(s.r.u)))].map(Number).filter(x => x > 0 && x <= UMAX);
+  if (us.length === 1 && sols.length === 1 || (us.length === 1 && sols.every(s => N(s.r.u) === N(us[0])))){
+    const b = $('cSend'); b.textContent = 'Launch the simulation with u = ' + N(us[0]) + ' m/s'; b.hidden = false; b.dataset.u = us[0];
+  }
+}
+$('cSolve').addEventListener('click', solveClick);
+$('cClear').addEventListener('click', () => { VARS.forEach(x => { $('c' + x).value = x === 'a' ? '-9.8' : ''; $('cw' + x).classList.remove('bad'); }); cErr(''); $('cOut').hidden = true; $('cSend').hidden = true; $('cs').focus(); });
+VARS.forEach(x => {
+  $('c' + x).addEventListener('input', () => { $('cw' + x).classList.remove('bad'); cErr(''); });
+  $('c' + x).addEventListener('keydown', e => { if (e.key === 'Enter') solveClick(); });
+});
+$('cSend').addEventListener('click', () => {
+  $('uIn').value = N(+$('cSend').dataset.u); $('uErr').textContent = ''; $('uWrap').classList.remove('bad');
+  playing = false; t = 0; $('launch').textContent = 'Launch';
+  $('launch').click();
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+draw();
+})();
+</script>
+</body>
+</html>
