@@ -79,6 +79,9 @@ footer{margin-top:18px;color:var(--muted);font-size:13px}
 .out .step{font-size:18px;overflow-x:auto;padding:2px 0}
 .out .note{color:var(--muted);font-size:14px;margin:10px 0 0}
 #cSend{margin-top:16px;width:100%}
+.chip{min-height:34px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+.chip:hover{color:var(--text);border-color:var(--muted)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
 @media (min-width:1240px){body.calc-open .wrap{padding-right:430px;max-width:1560px}}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 @media (max-width:860px){
@@ -149,13 +152,17 @@ footer{margin-top:18px;color:var(--muted);font-size:13px}
 
 <aside class="drawer" id="calc" aria-label="SUVAT calculator" hidden>
   <div class="dhead"><h2>SUVAT calculator</h2><button class="btn" id="calcClose">Close</button></div>
-  <p class="dnote">Fill in exactly three values and leave the other two blank. Upwards is positive, so a ball moving under gravity has <span class="tex" data-tex="a = -9.8"></span>.</p>
+  <p class="dnote">Fill in at least three values and leave the rest blank. Choose a positive direction first: any value in the opposite direction is negative. You can type calculations such as 3/4, 2*9.8 or sqrt(20).</p>
+  <div class="chips" role="group" aria-label="Fill in gravity">
+    <button class="chip" id="cGrav">Gravity, up positive: <span class="tex" data-tex="a = -9.8"></span></button>
+    <button class="chip" id="cGravD">Gravity, down positive: <span class="tex" data-tex="a = 9.8"></span></button>
+  </div>
   <div class="cgrid">
-    <div class="inwrap" id="cws"><span class="lab tex" data-tex="s ="></span><input id="cs" type="text" inputmode="decimal" aria-label="Displacement s in metres"><span class="unit tex" data-tex="\text{m}"></span></div>
-    <div class="inwrap" id="cwu"><span class="lab tex" data-tex="u ="></span><input id="cu" type="text" inputmode="decimal" aria-label="Initial velocity u in metres per second"><span class="unit tex" data-tex="\text{m s}^{-1}"></span></div>
-    <div class="inwrap" id="cwv"><span class="lab tex" data-tex="v ="></span><input id="cv" type="text" inputmode="decimal" aria-label="Final velocity v in metres per second"><span class="unit tex" data-tex="\text{m s}^{-1}"></span></div>
-    <div class="inwrap" id="cwa"><span class="lab tex" data-tex="a ="></span><input id="ca" type="text" inputmode="decimal" value="-9.8" aria-label="Acceleration a in metres per second squared"><span class="unit tex" data-tex="\text{m s}^{-2}"></span></div>
-    <div class="inwrap" id="cwt"><span class="lab tex" data-tex="t ="></span><input id="ct" type="text" inputmode="decimal" aria-label="Time t in seconds"><span class="unit tex" data-tex="\text{s}"></span></div>
+    <div class="inwrap" id="cws"><span class="lab tex" data-tex="s ="></span><input id="cs" type="text" autocomplete="off" spellcheck="false" aria-label="Displacement s in metres"><span class="unit tex" data-tex="\text{m}"></span></div>
+    <div class="inwrap" id="cwu"><span class="lab tex" data-tex="u ="></span><input id="cu" type="text" autocomplete="off" spellcheck="false" aria-label="Initial velocity u in metres per second"><span class="unit tex" data-tex="\text{m s}^{-1}"></span></div>
+    <div class="inwrap" id="cwv"><span class="lab tex" data-tex="v ="></span><input id="cv" type="text" autocomplete="off" spellcheck="false" aria-label="Final velocity v in metres per second"><span class="unit tex" data-tex="\text{m s}^{-1}"></span></div>
+    <div class="inwrap" id="cwa"><span class="lab tex" data-tex="a ="></span><input id="ca" type="text" autocomplete="off" spellcheck="false" aria-label="Acceleration a in metres per second squared"><span class="unit tex" data-tex="\text{m s}^{-2}"></span></div>
+    <div class="inwrap" id="cwt"><span class="lab tex" data-tex="t ="></span><input id="ct" type="text" autocomplete="off" spellcheck="false" aria-label="Time t in seconds"><span class="unit tex" data-tex="\text{s}"></span></div>
   </div>
   <div class="err" id="cErr" role="alert"></div>
   <div class="row"><button class="btn primary" id="cSolve">Solve</button><button class="btn" id="cClear">Clear</button></div>
@@ -370,11 +377,12 @@ function run(k, steps){
 }
 const one = (k, steps) => [run(k, steps)];
 const SOLVE_T = ['v = u + at', 't = \\frac{v - u}{a}', 't', r => (r.v - r.u) / r.a];
+const SOLVE_T0 = ['s = \\tfrac{1}{2}(u + v)t', 't = \\frac{2s}{u + v}', 't', r => 2 * r.s / (r.u + r.v)];
 function branch(k, disc, x, rea, note){
   if (disc < -1e-9) throw 'No real solution: with these values the ball never reaches that displacement.';
   const R = Math.sqrt(Math.max(0, disc)), sols = [];
   (R < 1e-9 ? [1] : [1, -1]).forEach(sg => {
-    try { const s = run(k, [['v^2 = u^2 + 2as', rea, x, () => sg * R], SOLVE_T]); if (s.r.t >= -1e-9) sols.push(s); } catch(e){}
+    try { const s = run(k, [['v^2 = u^2 + 2as', rea, x, () => sg * R], k.a === 0 ? SOLVE_T0 : SOLVE_T]); if (s.r.t >= -1e-9) sols.push(s); } catch(e){}
   });
   if (sols.length > 1) sols.note = note;
   return sols;
@@ -382,7 +390,7 @@ function branch(k, disc, x, rea, note){
 const nonNeg = sols => sols.filter(s => s.r.t >= -1e-9);
 const SOLVE = {
   atu: k => one(k, [['v = u + at', 'v = u + at', 'v', r => r.u + r.a * r.t], ['s = ut + \\tfrac{1}{2}at^2', 's = ut + \\tfrac{1}{2}at^2', 's', r => r.u * r.t + 0.5 * r.a * r.t * r.t]]),
-  auv: k => nonNeg(one(k, [SOLVE_T, ['v^2 = u^2 + 2as', 's = \\frac{v^2 - u^2}{2a}', 's', r => (r.v * r.v - r.u * r.u) / (2 * r.a)]])),
+  auv: k => { if (k.a === 0) throw (k.u === k.v ? 'With a = 0 the velocity never changes, so u, v and a cannot give t or s. Enter s or t as well.' : 'With a = 0 the velocity cannot change, so u and v must be equal.'); return nonNeg(one(k, [SOLVE_T, ['v^2 = u^2 + 2as', 's = \\frac{v^2 - u^2}{2a}', 's', r => (r.v * r.v - r.u * r.u) / (2 * r.a)]])); },
   tuv: k => one(k, [['v = u + at', 'a = \\frac{v - u}{t}', 'a', r => (r.v - r.u) / r.t], ['s = \\tfrac{1}{2}(u + v)t', 's = \\tfrac{1}{2}(u + v)t', 's', r => 0.5 * (r.u + r.v) * r.t]]),
   stu: k => one(k, [['s = ut + \\tfrac{1}{2}at^2', 'a = \\frac{2(s - ut)}{t^2}', 'a', r => 2 * (r.s - r.u * r.t) / (r.t * r.t)], ['s = \\tfrac{1}{2}(u + v)t', 'v = \\frac{2s}{t} - u', 'v', r => 2 * r.s / r.t - r.u]]),
   stv: k => one(k, [['s = \\tfrac{1}{2}(u + v)t', 'u = \\frac{2s}{t} - v', 'u', r => 2 * r.s / r.t - r.v], ['s = vt - \\tfrac{1}{2}at^2', 'a = \\frac{2(vt - s)}{t^2}', 'a', r => 2 * (r.v * r.t - r.s) / (r.t * r.t)]]),
@@ -392,21 +400,49 @@ const SOLVE = {
   asu: k => branch(k, k.u * k.u + 2 * k.a * k.s, 'v', 'v = \\pm\\sqrt{u^2 + 2as}', 'There are two answers because the ball passes this point twice: once on the way up and once on the way down.'),
   asv: k => branch(k, k.v * k.v - 2 * k.a * k.s, 'u', 'u = \\pm\\sqrt{v^2 - 2as}', 'There are two possible answers. Choose the one that fits the question.')
 };
+function evalExpr(str){
+  const s = str.replace(/\u2212/g, '-').replace(/\u00d7/g, '*').replace(/\u00f7/g, '/').replace(/,/g, '.').replace(/\s+/g, '').toLowerCase();
+  let i = 0;
+  function num(){ const m = /^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?/.exec(s.slice(i)); if (!m) throw 0; i += m[0].length; return parseFloat(m[0]); }
+  function primary(){
+    if (s.startsWith('sqrt(', i)){ i += 5; const v = expr(); if (s[i] !== ')') throw 0; i++; return Math.sqrt(v); }
+    if (s[i] === '('){ i++; const v = expr(); if (s[i] !== ')') throw 0; i++; return v; }
+    return num();
+  }
+  function power(){ const b = primary(); if (s[i] === '^'){ i++; return Math.pow(b, unary()); } return b; }
+  function unary(){ if (s[i] === '-'){ i++; return -unary(); } if (s[i] === '+'){ i++; return unary(); } return power(); }
+  function term(){ let v = unary(); while (s[i] === '*' || s[i] === '/'){ const op = s[i++]; const r = unary(); v = op === '*' ? v * r : v / r; } return v; }
+  function expr(){ let v = term(); while (s[i] === '+' || s[i] === '-'){ const op = s[i++]; const r = term(); v = op === '+' ? v + r : v - r; } return v; }
+  try { const v = expr(); return i === s.length && isFinite(v) ? v : null; } catch(e){ return null; }
+}
 function cErr(msg){ $('cErr').textContent = msg; }
 function solveClick(){
   const k = {}; let bad = false, cnt = 0;
   $('cOut').hidden = true; $('cSend').hidden = true; cErr('');
   VARS.forEach(x => {
-    const raw = $('c' + x).value.trim().replace(',', '.'); if (raw === '') return;
-    const n = Number(raw); if (!isFinite(n)){ $('cw' + x).classList.add('bad'); bad = true; return; }
+    const raw = $('c' + x).value.trim(); if (raw === '') return;
+    const n = evalExpr(raw); if (n === null){ $('cw' + x).classList.add('bad'); bad = true; return; }
     k[x] = n; cnt++;
   });
-  if (bad) return cErr('Use digits only, for example -9.8.');
-  if (cnt !== 3) return cErr('Fill in exactly three values and leave two blank. You have filled in ' + cnt + '.');
+  if (bad) return cErr('Type a number or a simple calculation, for example -9.8, 3/4 or 2*9.8.');
+  if (cnt < 3) return cErr('Fill in at least three values. You have filled in ' + cnt + '.');
+  if (cnt === 5) return cErr('All five boxes are filled in. Leave at least one blank to solve for it.');
   if ('t' in k && k.t < 0){ $('cwt').classList.add('bad'); return cErr('Time cannot be negative.'); }
-  let sols;
-  try { sols = SOLVE[Object.keys(k).sort().join('')](k); } catch(e){ return cErr(typeof e === 'string' ? e : BAD); }
-  if (!sols.length) return cErr('No valid solution with a time of zero or more. Check the signs of your values.');
+  let sols, check = null;
+  if (cnt === 3){
+    try { sols = SOLVE[Object.keys(k).sort().join('')](k); } catch(e){ return cErr(typeof e === 'string' ? e : BAD); }
+    if (!sols.length) return cErr('No valid solution with a time of zero or more. Check the signs of your values.');
+  } else {
+    let found = null;
+    for (const d of Object.keys(k)){
+      const k3 = Object.assign({}, k); delete k3[d];
+      let ss; try { ss = SOLVE[Object.keys(k3).sort().join('')](k3); } catch(e){ continue; }
+      const m = ss.find(s => Math.abs(s.r[d] - k[d]) <= Math.max(0.02, 0.01 * Math.abs(k[d])));
+      if (m){ found = m; check = d; break; }
+    }
+    if (!found) return cErr('These four values do not fit together. Check them, or leave two boxes blank.');
+    sols = [found];
+  }
   const out = $('cOut'); out.innerHTML = '';
   sols.forEach((s, i) => {
     if (sols.length > 1){ const h = document.createElement('h3'); h.textContent = 'Answer ' + (i + 1); out.appendChild(h); }
@@ -417,14 +453,16 @@ function solveClick(){
     });
   });
   if (sols.note){ const p = document.createElement('p'); p.className = 'note'; p.textContent = sols.note; out.appendChild(p); }
+  if (check){ const p = document.createElement('p'); p.className = 'note'; p.textContent = 'Your value of ' + check + ' agrees with this, so all four of your values are consistent.'; out.appendChild(p); }
   out.hidden = false;
   const us = [...new Set(sols.map(s => N(s.r.u)))].map(Number).filter(x => x > 0 && x <= UMAX);
-  if (us.length === 1 && sols.length === 1 || (us.length === 1 && sols.every(s => N(s.r.u) === N(us[0])))){
+  if (us.length === 1 && sols.every(s => N(s.r.u) === N(us[0]) && Math.abs(s.r.a + g) < 1e-6)){
     const b = $('cSend'); b.textContent = 'Launch the simulation with u = ' + N(us[0]) + ' m/s'; b.hidden = false; b.dataset.u = us[0];
   }
 }
 $('cSolve').addEventListener('click', solveClick);
-$('cClear').addEventListener('click', () => { VARS.forEach(x => { $('c' + x).value = x === 'a' ? '-9.8' : ''; $('cw' + x).classList.remove('bad'); }); cErr(''); $('cOut').hidden = true; $('cSend').hidden = true; $('cs').focus(); });
+[['cGrav', '-9.8'], ['cGravD', '9.8']].forEach(([id, val]) => $(id).addEventListener('click', () => { $('ca').value = val; $('cwa').classList.remove('bad'); cErr(''); $('ca').focus(); }));
+$('cClear').addEventListener('click', () => { VARS.forEach(x => { $('c' + x).value = ''; $('cw' + x).classList.remove('bad'); }); cErr(''); $('cOut').hidden = true; $('cSend').hidden = true; $('cs').focus(); });
 VARS.forEach(x => {
   $('c' + x).addEventListener('input', () => { $('cw' + x).classList.remove('bad'); cErr(''); });
   $('c' + x).addEventListener('keydown', e => { if (e.key === 'Enter') solveClick(); });
@@ -438,5 +476,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
 draw();
 })();
 </script>
+</body>
+</html>
+
 </body>
 </html>
